@@ -38,7 +38,10 @@
     button.ghost { background: transparent; }
     .kpis, .grid { display: grid; gap: 12px; }
     .kpis { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-    .grid { grid-template-columns: 1fr; }
+    .grid { grid-template-columns: 1fr 1fr; }
+    .pessoa { display: flex; gap: 12px; align-items: center; }
+    .foto { width: 72px; height: 96px; object-fit: cover; border-radius: 10px; background: #111; flex: 0 0 auto; }
+    .status { font-weight: 700; border-radius: 999px; padding: 6px 10px; font-size: .82rem; color: #102; background: #fff; }
     article, .kpi, .box {
       background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px;
     }
@@ -167,6 +170,7 @@
             for (const c of par.cand || []) {
               lista.push({
                 numero: String(c.n),
+                sq: c.sqcand || "",
                 nome: c.nmu || c.nm,
                 partido: par.sg || "",
                 votos: Number(c.vap || 0),
@@ -229,13 +233,17 @@
           const st = statusDe(cargo.regra, eu);
           const lider = todos[0];
           const largura = eu ? Math.min(100, Number(String(eu.pct).replace(",", "."))) : 0;
+          const foto = eu && eu.sq ? "https://resultados.tse.jus.br/oficial/ele2026/" + cargo.ele + "/fotos/" + cargo.uf + "/" + eu.sq + ".jpeg" : "";
           const art = document.createElement("article");
           art.innerHTML = `
             <div class="top">
-              <div>
-                <div class="cargo">${cargo.nome} · nº ${num}</div>
-                <div class="nome">${eu ? eu.nome : "número não encontrado"}</div>
-                <div class="meta">${eu ? eu.partido : ""} · urnas apuradas ${(json.s && json.s.pst) || "—"}%</div>
+              <div class="pessoa">
+                ${foto ? `<img class="foto" alt="" src="${foto}">` : ""}
+                <div>
+                  <div class="cargo">${cargo.nome} · nº ${num}</div>
+                  <div class="nome">${eu ? eu.nome : "número não encontrado"}</div>
+                  <div class="meta">${eu ? eu.partido : ""} · urnas apuradas ${(json.s && json.s.pst) || "—"}%</div>
+                </div>
               </div>
               <div class="status ${st.cls}">${st.txt}</div>
             </div>
