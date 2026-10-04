@@ -98,6 +98,10 @@
       </div>
     </div>
 
+    <h2>Mais votados</h2>
+    <p class="hint">Seis primeiros de cada cargo. “Eleito” só aparece quando o TSE marca a vaga. Deputado pode continuar “na frente” até fechar o quociente.</p>
+    <div class="picker" id="tops"></div>
+
     <h2>Como eu votei</h2>
     <div class="grid" id="cards"></div>
 
@@ -218,6 +222,32 @@
         || `<tr><td colspan="5">Nenhuma seção pendente no ES nesta leitura.</td></tr>`;
     }
 
+    function desenhaTops() {
+      const box = el("tops");
+      box.innerHTML = "";
+      for (const cargo of CARGOS) {
+        const json = cache[cargo.id];
+        if (!json) continue;
+        const todos = candidatos(json).slice(0, 6);
+        const wrap = document.createElement("article");
+        const linhas = todos.map(c => {
+          const foto = c.sq ? "https://resultados.tse.jus.br/oficial/ele2026/" + cargo.ele + "/fotos/" + cargo.uf + "/" + c.sq + ".jpeg" : "";
+          const selo = c.eleito ? "eleito" : (cargo.regra === "senado" && c.pos <= 2 ? "na vaga" : c.pos + "º");
+          const cls = c.eleito ? "win" : (cargo.regra === "senado" && c.pos <= 2 ? "mid" : "wait");
+          return `<div class="pessoa" style="margin:8px 0">
+            ${foto ? `<img class="foto" alt="" src="${foto}">` : ""}
+            <div>
+              <div class="nome">${c.pos}º ${c.nome}</div>
+              <div class="meta">${c.numero} · ${c.partido} · ${br(c.votos)} · ${c.pct}%</div>
+            </div>
+            <div class="status ${cls}">${selo}</div>
+          </div>`;
+        }).join("");
+        wrap.innerHTML = `<div class="cargo">${cargo.nome} · urnas ${json.s && json.s.pst || "—"}%</div>${linhas}`;
+        box.appendChild(wrap);
+      }
+    }
+
     function desenhaCards() {
       const box = el("cards");
       box.innerHTML = "";
@@ -331,6 +361,7 @@
           ts: n(a.s?.ts), st: n(a.s?.st), snt: n(a.s?.snt), pst: a.s?.pst || "0,00"
         }));
         desenhaUrnas(brJson, esGov, muns);
+        desenhaTops();
         desenhaCards();
         desenhaPicker();
         el("clock").textContent = `TSE ${brJson.dt || ""} ${brJson.ht || ""}`.trim();
