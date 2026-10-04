@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Painel da colinha · ES 2026</title>
+  <style>
+    :root {
+      --bg: #10140f; --card: #1b2218; --line: #31402c; --text: #f4f7f0;
+      --muted: #a9b6a1; --win: #d9ffe9; --lose: #ffd9d9; --mid: #fff1c2; --wait: #e7eef8;
+      --bar: #8fd14f; --warn: #f0c14b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--text);
+      background: radial-gradient(1100px 480px at 8% -10%, #24321c, var(--bg));
+    }
+    header, main, footer { width: min(1080px, calc(100% - 24px)); margin: 0 auto; }
+    header { padding: 22px 0 8px; }
+    h1 { margin: 0 0 6px; font-size: 1.55rem; }
+    h2 { margin: 22px 0 10px; font-size: 1.05rem; }
+    p, .hint { color: var(--muted); line-height: 1.45; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+    button, .pill, select, input[type="search"] {
+      border: 1px solid var(--line); background: #243024; color: var(--text);
+      border-radius: 999px; padding: 8px 14px; font: inherit;
+    }
+    button { cursor: pointer; }
+    button:focus, a:focus, input:focus, label.opt:focus-within, article:focus, .tvfocus {
+      outline: 4px solid #ffe14a; outline-offset: 3px;
+    }
+    #device { margin-top: 10px; font-size: 1rem; line-height: 1.4; }
+    @media (min-width: 1100px) {
+      body { font-size: 20px; }
+      h1 { font-size: 2rem; }
+      .nome { font-size: 1.5rem; }
+    }
+    button.ghost { background: transparent; }
+    .kpis, .grid { display: grid; gap: 12px; }
+    .kpis { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .grid { grid-template-columns: 1fr; }
+    article, .kpi, .box {
+      background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px;
+    }
+    .kpi strong { display: block; font-size: 1.55rem; margin-top: 4px; }
+    .kpi span, .cargo { color: var(--muted); font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; }
+    .warn strong { color: var(--warn); }
+    .top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .nome { font-size: 1.18rem; margin: 2px 0; }
+    .status { font-weight: 700; border-radius: 999px; padding: 6px 10px; white-space: nowrap; font-size: .82rem; }
+    .win { color: #062; background: var(--win); }
+    .lose { color: #5c1212; background: var(--lose); }
+    .mid { color: #4a3708; background: var(--mid); }
+    .wait { color: #223; background: var(--wait); }
+    .nums { display: flex; gap: 16px; margin: 10px 0 8px; flex-wrap: wrap; }
+    .nums strong { display: block; font-size: 1.25rem; }
+    .nums span { color: var(--muted); font-size: .75rem; }
+    .track { height: 8px; background: #111; border-radius: 99px; overflow: hidden; }
+    .fill { height: 100%; background: var(--bar); }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; }
+    .picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .lista { max-height: 220px; overflow: auto; margin-top: 8px; }
+    label.opt { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; font-size: .92rem; }
+    footer { margin: 16px auto 28px; color: var(--muted); font-size: .8rem; }
+    .err { color: #ffb4b4; }
+    a { color: #c6f59a; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Painel da colinha · Espírito Santo</h1>
+    <p>Urnas que ainda não entraram na soma do TSE e os candidatos que você marcar. A escolha fica neste navegador (localStorage). Pode marcar mais de dois por cargo.</p>
+    <div class="row">
+      <button id="now" type="button">Atualizar agora</button>
+      <button id="limpar" class="ghost" type="button">Limpar meus votos</button>
+      <span class="pill" id="clock">aguardando TSE…</span>
+      <span class="pill" id="next">próxima leitura em 5:00</span>
+    </div>
+    <div class="box" id="device">Detectando aparelho…</div>
+    <p id="msg" class="hint"></p>
+  </header>
+  <main>
+    <h2>Urnas / seções ainda por totalizar</h2>
+    <p class="hint">O TSE não publica uma fila chamada “reverificação”. O número oficial mais próximo é seções não totalizadas: a urna votou, mas o boletim ainda não entrou na soma. Não instaladas são seções que não abriram.</p>
+    <div class="kpis" id="kpis"></div>
+    <div class="box" style="margin-top:12px">
+      <div class="cargo">Espírito Santo · municípios com seção ainda fora da soma</div>
+      <div style="overflow:auto; max-height:280px; margin-top:8px">
+        <table>
+          <thead><tr><th>Município</th><th>Faltam</th><th>Totalizadas</th><th>Total</th><th>%</th></tr></thead>
+          <tbody id="muns"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <h2>Como eu votei</h2>
+    <div class="grid" id="cards"></div>
+
+    <h2>Escolher candidatos</h2>
+    <div class="picker" id="picker"></div>
+  </main>
+  <footer>
+    Fonte: JSON público do TSE (resultados.tse.jus.br). Parcial até a totalização fechar. Deputado é proporcional: lugar na lista não é vaga garantida.
+    Se o arquivo aberto direto bloquear a leitura, na pasta rode <code>python -m http.server 8080</code> e abra http://127.0.0.1:8080/apuracao-colinha.html
+  </footer>
+  <script>
+    const INTERVALO = 5 * 60 * 1000;
+    const BASE = "https://resultados.tse.jus.br/oficial/ele2026";
+    const STORE = "colinha-es-2026";
+    const PADRAO = {
+      presidente: ["14"],
+      governador: ["14"],
+      senador: ["400", "556"],
+      deputado_federal: ["4000"],
+      deputado_estadual: ["14014"]
+    };
+    const CARGOS = [
+      { id: "presidente", nome: "Presidente", uf: "br", ele: "6257", cd: "0001", regra: "major" },
+      { id: "governador", nome: "Governador · ES", uf: "es", ele: "6259", cd: "0003", regra: "major" },
+      { id: "senador", nome: "Senador · ES", uf: "es", ele: "6259", cd: "0005", regra: "senado" },
+      { id: "deputado_federal", nome: "Dep. federal · ES", uf: "es", ele: "6259", cd: "0006", regra: "prop" },
+      { id: "deputado_estadual", nome: "Dep. estadual · ES", uf: "es", ele: "6259", cd: "0007", regra: "prop" }
+    ];
+
+    const el = (id) => document.getElementById(id);
+    let falta = INTERVALO;
+    let tick = null;
+    let cache = {};
+
+    function copia(o) {
+      var out = {};
+      for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) out[k] = o[k].slice();
+      return out;
+    }
+    function loadSel() {
+      try {
+        var raw = localStorage.getItem(STORE);
+        if (!raw) return copia(PADRAO);
+        var parsed = JSON.parse(raw);
+        var base = copia(PADRAO);
+        for (var k in parsed) if (Object.prototype.hasOwnProperty.call(parsed, k)) base[k] = parsed[k];
+        return base;
+      } catch (e) { return copia(PADRAO); }
+    }
+    function saveSel(sel) { localStorage.setItem(STORE, JSON.stringify(sel)); }
+    let sel = loadSel();
+
+    function urlDe(c) {
+      const ele = String(c.ele).padStart(6, "0");
+      return `${BASE}/${c.ele}/dados/${c.uf}/${c.uf}-c${c.cd}-e${ele}-u.json?t=${Date.now()}`;
+    }
+    async function getJson(url) {
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }
+    function n(v) { return Number(String(v ?? 0).replace(/\./g, "").replace(",", ".")) || 0; }
+    function br(v) { return Number(v || 0).toLocaleString("pt-BR"); }
+
+    function candidatos(json) {
+      const lista = [];
+      for (const cargo of json.carg || []) {
+        for (const agr of cargo.agr || []) {
+          for (const par of agr.par || []) {
+            for (const c of par.cand || []) {
+              lista.push({
+                numero: String(c.n),
+                nome: c.nmu || c.nm,
+                partido: par.sg || "",
+                votos: Number(c.vap || 0),
+                pct: c.pvap || "0,00",
+                eleito: c.e === "s"
+              });
+            }
+          }
+        }
+      }
+      lista.sort((a, b) => b.votos - a.votos);
+      lista.forEach((c, i) => { c.pos = i + 1; });
+      return lista;
+    }
+    function statusDe(regra, eu) {
+      if (!eu) return { cls: "wait", txt: "sem voto na parcial" };
+      if (eu.eleito) return { cls: "win", txt: "eleito" };
+      if (regra === "senado") return eu.pos <= 2 ? { cls: "win", txt: `na vaga · ${eu.pos}º` } : { cls: "lose", txt: `fora das 2 vagas · ${eu.pos}º` };
+      if (regra === "prop") return { cls: "mid", txt: `${eu.pos}º na lista · proporcional` };
+      const pct = Number(String(eu.pct).replace(",", "."));
+      if (eu.pos === 1 && pct > 50) return { cls: "win", txt: "na frente e acima de 50%" };
+      if (eu.pos === 1) return { cls: "mid", txt: "na frente, abaixo de 50%" };
+      if (eu.pos === 2) return { cls: "mid", txt: "2º · no 2º turno por enquanto" };
+      return { cls: "lose", txt: `perdendo · ${eu.pos}º` };
+    }
+
+    function kpi(titulo, valor, extra, warn) {
+      return `<div class="kpi ${warn ? "warn" : ""}"><span>${titulo}</span><strong>${valor}</strong><span>${extra || ""}</span></div>`;
+    }
+
+    function desenhaUrnas(brJson, esJson, muns) {
+      const bs = brJson.s || {}, es = esJson.s || {};
+      el("kpis").innerHTML = [
+        kpi("Brasil · seções", br(bs.ts), "total de urnas/seções"),
+        kpi("Brasil · já na soma", br(bs.st), (bs.pst || "0") + "% totalizadas"),
+        kpi("Brasil · ainda por totalizar", br(bs.snt), "boletim ainda não entrou", true),
+        kpi("Brasil · não instaladas", br(bs.sni), "seção não abriu"),
+        kpi("ES · seções", br(es.ts), "total no estado"),
+        kpi("ES · já na soma", br(es.st), (es.pst || "0") + "% totalizadas"),
+        kpi("ES · ainda por totalizar", br(es.snt), "a conferir / entrar na soma", true),
+        kpi("ES · municípios zerados", br(muns.filter(m => m.st === 0).length), "nenhuma urna na soma")
+      ].join("");
+      const corpo = muns.filter(m => m.snt > 0).sort((a, b) => b.snt - a.snt).slice(0, 40);
+      el("muns").innerHTML = corpo.map(m => `<tr><td>${m.nome}</td><td>${br(m.snt)}</td><td>${br(m.st)}</td><td>${br(m.ts)}</td><td>${m.pst}%</td></tr>`).join("")
+        || `<tr><td colspan="5">Nenhuma seção pendente no ES nesta leitura.</td></tr>`;
+    }
+
+    function desenhaCards() {
+      const box = el("cards");
+      box.innerHTML = "";
+      let algum = false;
+      for (const cargo of CARGOS) {
+        const json = cache[cargo.id];
+        if (!json) continue;
+        const todos = candidatos(json);
+        const nums = sel[cargo.id] || [];
+        for (const num of nums) {
+          algum = true;
+          const eu = todos.find(c => c.numero === num);
+          const st = statusDe(cargo.regra, eu);
+          const lider = todos[0];
+          const largura = eu ? Math.min(100, Number(String(eu.pct).replace(",", "."))) : 0;
+          const art = document.createElement("article");
+          art.innerHTML = `
+            <div class="top">
+              <div>
+                <div class="cargo">${cargo.nome} · nº ${num}</div>
+                <div class="nome">${eu ? eu.nome : "número não encontrado"}</div>
+                <div class="meta">${eu ? eu.partido : ""} · urnas apuradas ${(json.s && json.s.pst) || "—"}%</div>
+              </div>
+              <div class="status ${st.cls}">${st.txt}</div>
+            </div>
+            <div class="nums">
+              <div><strong>${eu ? br(eu.votos) : "—"}</strong><span>votos</span></div>
+              <div><strong>${eu ? eu.pct + "%" : "—"}</strong><span>dos válidos</span></div>
+              <div><strong>${eu ? eu.pos + "º" : "—"}</strong><span>colocação</span></div>
+            </div>
+            <div class="track"><div class="fill" style="width:${largura}%"></div></div>
+            <p class="hint">${lider ? `Líder: ${lider.nome} (${lider.numero}) · ${br(lider.votos)} · ${lider.pct}%` : ""} ${json.ht ? "· TSE " + json.dt + " " + json.ht : ""}</p>`;
+          box.appendChild(art);
+        }
+      }
+      if (!algum) box.innerHTML = `<article><p>Nenhum candidato marcado. Escolha abaixo.</p></article>`;
+    }
+
+    function desenhaPicker() {
+      const box = el("picker");
+      box.innerHTML = "";
+      for (const cargo of CARGOS) {
+        const json = cache[cargo.id];
+        const todos = json ? candidatos(json) : [];
+        const wrap = document.createElement("div");
+        wrap.className = "box";
+        const marcados = (sel[cargo.id] || []).length;
+        wrap.innerHTML = `<div class="cargo">${cargo.nome}</div><strong>${marcados} marcado(s)</strong>`;
+        const busca = document.createElement("input");
+        busca.type = "search";
+        busca.placeholder = "filtrar nome ou número";
+        busca.style.width = "100%";
+        busca.style.marginTop = "8px";
+        const lista = document.createElement("div");
+        lista.className = "lista";
+        function render(q) {
+          const qq = q.trim().toLowerCase();
+          const vis = todos.filter(c => !qq || c.nome.toLowerCase().includes(qq) || c.numero.includes(qq)).slice(0, 80);
+          lista.innerHTML = "";
+          for (const c of vis) {
+            const lab = document.createElement("label");
+            lab.className = "opt";
+            const ck = document.createElement("input");
+            ck.type = "checkbox";
+            ck.checked = (sel[cargo.id] || []).includes(c.numero);
+            ck.onchange = () => {
+              const set = new Set(sel[cargo.id] || []);
+              ck.checked ? set.add(c.numero) : set.delete(c.numero);
+              sel[cargo.id] = [...set];
+              saveSel(sel);
+              desenhaCards();
+              wrap.querySelector("strong").textContent = `${sel[cargo.id].length} marcado(s)`;
+            };
+            lab.append(ck, document.createTextNode(` ${c.numero} ${c.nome} (${c.partido})`));
+            lista.appendChild(lab);
+          }
+          if (!vis.length) lista.innerHTML = `<p class="hint">Sem candidato nesse filtro.</p>`;
+        }
+        busca.oninput = () => render(busca.value);
+        wrap.append(busca, lista);
+        box.appendChild(wrap);
+        render("");
+      }
+    }
+
+    async function carregar() {
+      el("msg").textContent = "Lendo o TSE…";
+      el("msg").className = "hint";
+      try {
+        const [brJson, esGov, esSen, esDf, esDe, ab, mun] = await Promise.all([
+          getJson(urlDe(CARGOS[0])),
+          getJson(urlDe(CARGOS[1])),
+          getJson(urlDe(CARGOS[2])),
+          getJson(urlDe(CARGOS[3])),
+          getJson(urlDe(CARGOS[4])),
+          getJson(`${BASE}/6259/dados/es/es-e006259-ab.json?t=${Date.now()}`),
+          getJson(`${BASE}/6259/config/mun-e006259-cm.json`)
+        ]);
+        cache = { presidente: brJson, governador: esGov, senador: esSen, deputado_federal: esDf, deputado_estadual: esDe };
+        const nomes = {};
+        for (const uf of mun.abr || []) {
+          if (uf.cd !== "es") continue;
+          for (const m of uf.mu || []) nomes[m.cd] = m.nm;
+        }
+        const muns = (ab.abr || []).map(a => ({
+          nome: nomes[a.cdabr] || a.cdabr,
+          ts: n(a.s?.ts), st: n(a.s?.st), snt: n(a.s?.snt), pst: a.s?.pst || "0,00"
+        }));
+        desenhaUrnas(brJson, esGov, muns);
+        desenhaCards();
+        desenhaPicker();
+        el("clock").textContent = `TSE ${brJson.dt || ""} ${brJson.ht || ""}`.trim();
+        el("msg").textContent = "Leitura ok. Seus marcados estão salvos neste navegador.";
+        falta = INTERVALO;
+      } catch (err) {
+        el("msg").className = "err";
+        el("msg").textContent = "Não consegui ler o TSE (" + err.message + "). Se abriu o arquivo direto, use o servidor local indicado no rodapé.";
+      }
+    }
+
+    el("now").onclick = carregar;
+    el("limpar").onclick = () => { sel = { presidente: [], governador: [], senador: [], deputado_federal: [], deputado_estadual: [] }; saveSel(sel); desenhaCards(); desenhaPicker(); };
+    setInterval(() => {
+      falta -= 1000;
+      if (falta < 0) falta = 0;
+      const s = Math.ceil(falta / 1000);
+      el("next").textContent = `próxima leitura em ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    }, 1000);
+    setInterval(carregar, INTERVALO);
+    carregar();
+
+    function aparelho() {
+      const ua = navigator.userAgent || "";
+      const vidaa = /VIDAA|Hisense|Toshiba/i.test(ua);
+      const tv = vidaa || /SmartTV|TV|Web0S|Tizen/i.test(ua) || (screen.width >= 1200 && !navigator.maxTouchPoints);
+      let store = "sim";
+      try { localStorage.setItem("t", "1"); localStorage.removeItem("t"); } catch (e) { store = "não"; }
+      el("device").innerHTML =
+        "<strong>" + (vidaa ? "TV VIDAA / Toshiba" : tv ? "parece TV ou tela grande" : "navegador comum") + "</strong>" +
+        "<br>Tela " + screen.width + "×" + screen.height +
+        " · localStorage: " + store +
+        " · fetch: " + (window.fetch ? "sim" : "não") +
+        "<br>Controle: setas movem o foco, OK confirma. " +
+        "<span class=\"hint\">" + ua.slice(0, 180) + "</span>";
+    }
+    aparelho();
+
+    function focaveis() {
+      return Array.from(document.querySelectorAll("button, input, a, label.opt")).filter(n => n.offsetParent !== null);
+    }
+    document.addEventListener("keydown", (ev) => {
+      const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+      if (keys.indexOf(ev.key) === -1) return;
+      const lista = focaveis();
+      if (!lista.length) return;
+      const atual = document.activeElement;
+      let i = lista.indexOf(atual);
+      if (i < 0) { lista[0].focus(); ev.preventDefault(); return; }
+      const passo = (ev.key === "ArrowDown" || ev.key === "ArrowRight") ? 1 : -1;
+      const prox = lista[(i + passo + lista.length) % lista.length];
+      prox.focus();
+      prox.scrollIntoView({ block: "center" });
+      ev.preventDefault();
+    });
+  </script>
+</body>
+</html>
