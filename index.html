@@ -73,7 +73,11 @@
     .picker { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     article, .kpi, .box { overflow: hidden; min-width: 0; }
     .pessoa { display: flex; gap: 8px; align-items: center; min-width: 0; }
-    .pessoa .nome, .pessoa .meta { overflow: hidden; word-wrap: break-word; }
+    .pessoa .nome, .pessoa .meta { word-break: normal; overflow-wrap: normal; }
+    @media (max-width: 800px) {
+      .grid, .picker, .kpis { grid-template-columns: 1fr; }
+      .foto { width: 64px; height: 80px; }
+    }
     .status { flex: 0 0 auto; max-width: 92px; text-align: center; white-space: normal; }
     .lista { max-height: 220px; overflow: auto; margin-top: 8px; }
     label.opt { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; font-size: .92rem; }
@@ -139,8 +143,8 @@
       { id: "presidente", nome: "Presidente", uf: "br", ele: "6257", cd: "0001", regra: "major" },
       { id: "governador", nome: "Governador · ES", uf: "es", ele: "6259", cd: "0003", regra: "major" },
       { id: "senador", nome: "Senador · ES", uf: "es", ele: "6259", cd: "0005", regra: "senado" },
-      { id: "deputado_federal", nome: "Dep. federal · ES", uf: "es", ele: "6259", cd: "0006", regra: "prop" },
-      { id: "deputado_estadual", nome: "Dep. estadual · ES", uf: "es", ele: "6259", cd: "0007", regra: "prop" }
+      { id: "deputado_federal", nome: "Dep. federal · ES", uf: "es", ele: "6259", cd: "0006", regra: "prop", vagas: 10 },
+      { id: "deputado_estadual", nome: "Dep. estadual · ES", uf: "es", ele: "6259", cd: "0007", regra: "prop", vagas: 30 }
     ];
 
     const el = (id) => document.getElementById(id);
@@ -201,11 +205,16 @@
       lista.forEach((c, i) => { c.pos = i + 1; });
       return lista;
     }
-    function statusDe(regra, eu) {
+    function statusDe(regra, eu, vagas) {
       if (!eu) return { cls: "wait", txt: "sem voto na parcial" };
       if (eu.eleito) return { cls: "win", txt: "eleito" };
-      if (regra === "senado") return eu.pos <= 2 ? { cls: "win", txt: `na vaga · ${eu.pos}º` } : { cls: "lose", txt: `fora das 2 vagas · ${eu.pos}º` };
-      if (regra === "prop") return { cls: "mid", txt: `${eu.pos}º na lista · proporcional` };
+      if (regra === "senado") return eu.pos <= 2 ? { cls: "win", txt: "na vaga · " + eu.pos + "º" } : { cls: "lose", txt: "fora das 2 vagas · " + eu.pos + "º" };
+      if (regra === "prop") {
+        const faixa = vagas || 0;
+        return eu.pos <= faixa
+          ? { cls: "mid", txt: "na faixa · " + eu.pos + "º de " + faixa }
+          : { cls: "lose", txt: "fora · " + eu.pos + "º de " + faixa };
+      }
       const pct = Number(String(eu.pct).replace(",", "."));
       if (eu.pos === 1 && pct > 50) return { cls: "win", txt: "na frente e acima de 50%" };
       if (eu.pos === 1) return { cls: "mid", txt: "na frente, abaixo de 50%" };
@@ -240,12 +249,19 @@
       for (const cargo of CARGOS) {
         const json = cache[cargo.id];
         if (!json) continue;
-        const todos = candidatos(json).slice(0, 6);
+        const todos = candidatos(json);
+        const faixa = cargo.vagas || (cargo.regra === "senado" ? 2 : 0);
+        const eleitos = todos.filter(c => c.eleito).length;
+        const lista = todos.slice(0, 6);
         const wrap = document.createElement("article");
-        const linhas = todos.map(c => {
+        const cabeca = faixa
+          ? `${cargo.nome} · ${faixa} vagas · ${eleitos} eleito(s) · urnas ${json.s && json.s.pst || "—"}%`
+          : `${cargo.nome} · urnas ${json.s && json.s.pst || "—"}%`;
+        const linhas = lista.map(c => {
           const foto = c.sq ? "https://resultados.tse.jus.br/oficial/ele2026/" + cargo.ele + "/fotos/" + cargo.uf + "/" + c.sq + ".jpeg" : "";
-          const selo = c.eleito ? "eleito" : (cargo.regra === "senado" && c.pos <= 2 ? "na vaga" : c.pos + "º");
-          const cls = c.eleito ? "win" : (cargo.regra === "senado" && c.pos <= 2 ? "mid" : "wait");
+          const naFaixa = faixa && c.pos <= faixa;
+          const selo = c.eleito ? "eleito" : (naFaixa ? "na vaga" : c.pos + "º");
+          const cls = c.eleito ? "win" : (naFaixa ? "mid" : "wait");
           return `<div class="pessoa" style="margin:8px 0">
             ${foto ? `<img class="foto" alt="" src="${foto}">` : ""}
             <div style="min-width:0;flex:1">
@@ -255,7 +271,7 @@
             <div class="status ${cls}">${selo}</div>
           </div>`;
         }).join("");
-        wrap.innerHTML = `<div class="cargo">${cargo.nome} · urnas ${json.s && json.s.pst || "—"}%</div>${linhas}`;
+        wrap.innerHTML = `<div class="cargo">${cabeca}</div>${linhas}`;
         box.appendChild(wrap);
       }
     }
@@ -272,7 +288,7 @@
         for (const num of nums) {
           algum = true;
           const eu = todos.find(c => c.numero === num);
-          const st = statusDe(cargo.regra, eu);
+          const st = statusDe(cargo.regra, eu, cargo.vagas);
           const lider = todos[0];
           const largura = eu ? Math.min(100, Number(String(eu.pct).replace(",", "."))) : 0;
           const foto = eu && eu.sq ? "https://resultados.tse.jus.br/oficial/ele2026/" + cargo.ele + "/fotos/" + cargo.uf + "/" + eu.sq + ".jpeg" : "";
