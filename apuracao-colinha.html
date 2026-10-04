@@ -63,7 +63,11 @@
     table { width: 100%; border-collapse: collapse; font-size: .92rem; }
     th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); }
     th { color: var(--muted); font-weight: 600; }
-    .picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .picker { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    article, .kpi, .box { overflow: hidden; min-width: 0; }
+    .pessoa { display: flex; gap: 8px; align-items: center; min-width: 0; }
+    .pessoa .nome, .pessoa .meta { overflow: hidden; word-wrap: break-word; }
+    .status { flex: 0 0 auto; max-width: 92px; text-align: center; white-space: normal; }
     .lista { max-height: 220px; overflow: auto; margin-top: 8px; }
     label.opt { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; font-size: .92rem; }
     footer { margin: 16px auto 28px; color: var(--muted); font-size: .8rem; }
@@ -236,9 +240,9 @@
           const cls = c.eleito ? "win" : (cargo.regra === "senado" && c.pos <= 2 ? "mid" : "wait");
           return `<div class="pessoa" style="margin:8px 0">
             ${foto ? `<img class="foto" alt="" src="${foto}">` : ""}
-            <div>
+            <div style="min-width:0;flex:1">
               <div class="nome">${c.pos}º ${c.nome}</div>
-              <div class="meta">${c.numero} · ${c.partido} · ${br(c.votos)} · ${c.pct}%</div>
+              <div class="meta">${c.numero} · ${c.partido}<br>${br(c.votos)} votos · ${c.pct}%</div>
             </div>
             <div class="status ${cls}">${selo}</div>
           </div>`;
