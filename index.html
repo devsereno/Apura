@@ -124,7 +124,7 @@
 
     <h2>Lista · deputados</h2>
     <p class="hint">Federal: 10 vagas. Estadual: 30 vagas. A lista mostra a faixa inteira e mais 5 logo atrás.</p>
-    <div id="listas"></div>
+    <div class="picker" id="listas"></div>
 
     <h2>Escolher candidatos</h2>
     <div class="picker" id="picker"></div>
@@ -330,27 +330,36 @@
         const json = cache[cargo.id];
         if (!json) return;
         const todos = candidatos(json);
-        const eleitos = todos.filter(c => c.eleito).length;
         const eleitosLista = todos.filter(c => c.eleito);
         const fonte = eleitosLista.length ? eleitosLista : todos.slice(0, cargo.vagas);
-        const linhas = fonte.map(c => {
-          const foto = c.sq ? "https://resultados.tse.jus.br/oficial/ele2026/" + cargo.ele + "/fotos/" + cargo.uf + "/" + c.sq + ".jpeg" : "";
-          const dentro = c.pos <= cargo.vagas;
-          const selo = c.eleito ? "eleito" : (dentro ? "na vaga" : "fora");
-          const cls = c.eleito ? "win" : (dentro ? "mid" : "wait");
-          return `<div class="pessoa" style="margin:6px 0">
-            ${foto ? `<img class="foto" alt="" src="${foto}">` : ""}
-            <div style="min-width:0;flex:1">
-              <div class="nome">${c.pos}º ${c.nome}</div>
-              <div class="meta">${c.numero} · ${c.partido}<br>${br(c.votos)} votos · ${c.pct}%</div>
-            </div>
-            <div class="status ${cls}">${selo}</div>
-          </div>`;
-        }).join("");
-        const art = document.createElement("article");
-        art.style.marginBottom = "12px";
-        art.innerHTML = `<div class="cargo">${cargo.nome} · ${cargo.vagas} vagas · ${eleitos} eleito(s) · urnas ${json.s && json.s.pst || "—"}%</div><div class="rolagem">${linhas}</div>`;
-        box.appendChild(art);
+        const wrap = document.createElement("div");
+        wrap.className = "box";
+        wrap.innerHTML = `<div class="cargo">${cargo.nome}</div><strong>${fonte.length} eleito(s) · ${cargo.vagas} vagas</strong>`;
+        const busca = document.createElement("input");
+        busca.type = "search";
+        busca.placeholder = "filtrar nome ou número";
+        busca.style.width = "100%";
+        busca.style.marginTop = "8px";
+        const lista = document.createElement("div");
+        lista.className = "lista";
+        function render(q) {
+          const qq = q.trim().toLowerCase();
+          const vis = fonte.filter(c => !qq || c.nome.toLowerCase().includes(qq) || c.numero.includes(qq));
+          lista.innerHTML = "";
+          vis.forEach(c => {
+            const foto = c.sq ? "https://resultados.tse.jus.br/oficial/ele2026/" + cargo.ele + "/fotos/" + cargo.uf + "/" + c.sq + ".jpeg" : "";
+            const row = document.createElement("div");
+            row.className = "pessoa";
+            row.style.margin = "8px 0";
+            row.innerHTML = `${foto ? `<img class="foto" alt="" src="${foto}">` : ""}<div style="min-width:0;flex:1"><div class="nome">${c.pos}º ${c.nome}</div><div class="meta">${c.numero} · ${c.partido}<br>${br(c.votos)} votos · ${c.pct}%</div></div><div class="status win">eleito</div>`;
+            lista.appendChild(row);
+          });
+          if (!vis.length) lista.innerHTML = `<p class="hint">Nenhum eleito nesse filtro.</p>`;
+        }
+        busca.oninput = () => render(busca.value);
+        wrap.append(busca, lista);
+        box.appendChild(wrap);
+        render("");
       });
     }
 
