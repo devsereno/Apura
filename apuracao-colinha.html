@@ -80,6 +80,7 @@
     }
     .status { flex: 0 0 auto; max-width: 92px; text-align: center; white-space: normal; }
     .lista { max-height: 220px; overflow: auto; margin-top: 8px; }
+    .rolagem { max-height: 420px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
     label.opt { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; font-size: .92rem; }
     footer { margin: 16px auto 28px; color: var(--muted); font-size: .8rem; }
     .err { color: #ffb4b4; }
@@ -120,6 +121,10 @@
 
     <h2>Como eu votei</h2>
     <div class="grid" id="cards"></div>
+
+    <h2>Lista · deputados</h2>
+    <p class="hint">Federal: 10 vagas. Estadual: 30 vagas. A lista mostra a faixa inteira e mais 5 logo atrás.</p>
+    <div id="listas"></div>
 
     <h2>Escolher candidatos</h2>
     <div class="picker" id="picker"></div>
@@ -318,6 +323,37 @@
       if (!algum) box.innerHTML = `<article><p>Nenhum candidato marcado. Escolha abaixo.</p></article>`;
     }
 
+    function desenhaListas() {
+      const box = el("listas");
+      box.innerHTML = "";
+      CARGOS.filter(c => c.vagas).forEach(cargo => {
+        const json = cache[cargo.id];
+        if (!json) return;
+        const todos = candidatos(json);
+        const eleitos = todos.filter(c => c.eleito).length;
+        const eleitosLista = todos.filter(c => c.eleito);
+        const fonte = eleitosLista.length ? eleitosLista : todos.slice(0, cargo.vagas);
+        const linhas = fonte.map(c => {
+          const foto = c.sq ? "https://resultados.tse.jus.br/oficial/ele2026/" + cargo.ele + "/fotos/" + cargo.uf + "/" + c.sq + ".jpeg" : "";
+          const dentro = c.pos <= cargo.vagas;
+          const selo = c.eleito ? "eleito" : (dentro ? "na vaga" : "fora");
+          const cls = c.eleito ? "win" : (dentro ? "mid" : "wait");
+          return `<div class="pessoa" style="margin:6px 0">
+            ${foto ? `<img class="foto" alt="" src="${foto}">` : ""}
+            <div style="min-width:0;flex:1">
+              <div class="nome">${c.pos}º ${c.nome}</div>
+              <div class="meta">${c.numero} · ${c.partido}<br>${br(c.votos)} votos · ${c.pct}%</div>
+            </div>
+            <div class="status ${cls}">${selo}</div>
+          </div>`;
+        }).join("");
+        const art = document.createElement("article");
+        art.style.marginBottom = "12px";
+        art.innerHTML = `<div class="cargo">${cargo.nome} · ${cargo.vagas} vagas · ${eleitos} eleito(s) · urnas ${json.s && json.s.pst || "—"}%</div><div class="rolagem">${linhas}</div>`;
+        box.appendChild(art);
+      });
+    }
+
     function desenhaPicker() {
       const box = el("picker");
       box.innerHTML = "";
@@ -386,10 +422,10 @@
         }
         const muns = (ab.abr || []).map(a => ({
           nome: nomes[a.cdabr] || a.cdabr,
-          ts: n(a.s?.ts), st: n(a.s?.st), snt: n(a.s?.snt), pst: a.s?.pst || "0,00"
-        }));
+          ts: n(a.s?.ts}));
         desenhaUrnas(brJson, esGov, muns);
         desenhaTops();
+        desenhaListas();
         desenhaCards();
         desenhaPicker();
         el("clock").textContent = `TSE ${brJson.dt || ""} ${brJson.ht || ""}`.trim();
@@ -458,3 +494,4 @@
   </script>
 </body>
 </html>
+                                                                     
