@@ -414,7 +414,7 @@
       el("msg").textContent = "Lendo o TSE…";
       el("msg").className = "hint";
       try {
-        const [brJson, esGov, esSen, esDf, esDe, ab, mun] = await Promise.all([
+        const pedidos = await Promise.allSettled([
           getJson(urlDe(CARGOS[0])),
           getJson(urlDe(CARGOS[1])),
           getJson(urlDe(CARGOS[2])),
@@ -423,6 +423,11 @@
           getJson(`${BASE}/6259/dados/es/es-e006259-ab.json?t=${Date.now()}`),
           getJson(`${BASE}/6259/config/mun-e006259-cm.json`)
         ]);
+        const pegar = i => pedidos[i].status === "fulfilled" ? pedidos[i].value : null;
+        const brJson = pegar(0), esGov = pegar(1), esSen = pegar(2), esDf = pegar(3), esDe = pegar(4);
+        const ab = pegar(5) || { abr: [] };
+        const mun = pegar(6) || { abr: [] };
+        if (!brJson && !esGov) throw new Error("TSE não devolveu os arquivos agora");
         cache = { presidente: brJson, governador: esGov, senador: esSen, deputado_federal: esDf, deputado_estadual: esDe };
         const nomes = {};
         for (const uf of mun.abr || []) {
