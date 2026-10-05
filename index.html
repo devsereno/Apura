@@ -436,7 +436,8 @@
         }
         const muns = (ab.abr || []).map(a => ({
           nome: nomes[a.cdabr] || a.cdabr,
-          ts: n(a.s?.ts}));
+          ts: n(a.s && a.s.ts), st: n(a.s && a.s.st), snt: n(a.s && a.s.snt), pst: (a.s && a.s.pst) || "0,00"
+        })).filter(m => m.snt > 0).sort((a,b) => b.snt - a.snt);
         desenhaUrnas(brJson, esGov, muns);
         desenhaTops();
         desenhaListas();
