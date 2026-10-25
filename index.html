@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Apura · 2º turno · ES 2026</title>
+  <link rel="icon" href="logos/icon-dark.jpg">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #141a2e;
+      --line: #2a3450;
+      --text: #e8eefc;
+      --muted: #9aa8c7;
+      --accent: #818cf8;
+      --win: #d9ffe9;
+      --lose: #ffd9d9;
+      --mid: #fff1c2;
+      --wait: #e7eef8;
+      --bar: #8fd14f;
+      --warn: #f0c14b;
+      --radius: 16px;
+    }
+    [data-theme="light"] {
+      --bg: #f8f6f0;
+      --card: #ffffff;
+      --line: #e2ddd0;
+      --text: #1a1a1a;
+      --muted: #5c5c5c;
+      --accent: #4f46e5;
+      --win: #d1fae5;
+      --lose: #fee2e2;
+      --mid: #fef3c7;
+      --wait: #e0e7ff;
+      --bar: #16a34a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      transition: background .3s, color .3s;
+    }
+    body.modo-tv { font-size: 1.15rem; }
+    body.modo-tv h1 { font-size: 2.4rem; }
+    body.modo-tv .nome { font-size: 1.6rem; }
+    body.modo-tv .foto { width: 90px; height: 120px; }
+    header, main, footer { width: min(1200px, calc(100% - 32px)); margin: 0 auto; }
+    header { padding: 20px 0 10px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .logo { height: 48px; border-radius: 8px; }
+    h1 { margin: 0; font-size: 1.6rem; flex: 1; }
+    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    button, .pill, select, input[type="search"] {
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font: inherit;
+      cursor: pointer;
+    }
+    button:focus, a:focus, input:focus { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .kpis, .grid, .tops-grid { display: grid; gap: 14px; }
+    .kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+    .grid { grid-template-columns: 1fr 1fr; }
+    .tops-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+    .pessoa { display: flex; gap: 12px; align-items: center; }
+    .foto { width: 72px; height: 96px; object-fit: cover; border-radius: 10px; background: #111; flex: 0 0 auto; }
+    .status { font-weight: 700; border-radius: 999px; padding: 6px 12px; font-size: .82rem; white-space: nowrap; }
+    article, .kpi, .box, .rank-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .kpi strong { display: block; font-size: 1.6rem; margin-top: 4px; }
+    .kpi span, .cargo { color: var(--muted); font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; }
+    .warn strong { color: var(--warn); }
+    .nome { font-size: 1.2rem; margin: 2px 0; font-weight: 600; }
+    .win { color: #062; background: var(--win); }
+    .lose { color: #5c1212; background: var(--lose); }
+    .mid { color: #4a3708; background: var(--mid); }
+    .wait { color: #223; background: var(--wait); }
+    .nums { display: flex; gap: 16px; margin: 10px 0 8px; flex-wrap: wrap; }
+    .nums strong { display: block; font-size: 1.3rem; }
+    .nums span { color: var(--muted); font-size: .75rem; }
+    .track { height: 8px; background: #111; border-radius: 99px; overflow: hidden; margin-top: 6px; }
+    .fill { height: 100%; background: var(--bar); }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; }
+    .rank-item { display: flex; gap: 12px; align-items: center; margin: 10px 0; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.03); }
+    .rank-pos { font-size: 1.4rem; font-weight: 800; width: 36px; text-align: center; color: var(--accent); }
+    .rank-pos.top3 { color: #fbbf24; }
+    footer { margin: 24px auto 40px; color: var(--muted); font-size: .85rem; text-align: center; }
+    .err { color: #ffb4b4; }
+    a { color: var(--accent); }
+    #splash, #choice {
+      position: fixed; inset: 0; background: var(--bg); color: var(--text);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 9999; text-align: center; padding: 20px;
+    }
+    #splash img, #choice img { max-width: 280px; height: auto; margin-bottom: 20px; border-radius: 12px; }
+    .choice-btns { display: flex; gap: 20px; margin-top: 30px; flex-wrap: wrap; justify-content: center; }
+    .choice-btns button { font-size: 1.3rem; padding: 18px 36px; min-width: 180px; }
+    .theme-toggle { font-size: 1.2rem; }
+    @media (max-width: 800px) {
+      .grid, .tops-grid, .kpis { grid-template-columns: 1fr; }
+      .foto { width: 64px; height: 84px; }
+      header { flex-direction: column; align-items: flex-start; }
+    }
+    body.modo-tv .choice-btns button { font-size: 1.8rem; padding: 24px 48px; }
+  </style>
+</head>
+<body data-theme="dark">
+  <!-- Splash -->
+  <div id="splash">
+    <img id="splash-logo" src="logos/apura-dark.jpg" alt="Apura">
+    <div style="font-size: 14px; opacity: .7; letter-spacing: 2px; margin-bottom: 8px;">RESULTADOS EM TEMPO REAL</div>
+    <div style="width: 180px; height: 4px; background: #1e293b; border-radius: 4px; overflow: hidden; margin-bottom: 28px;">
+      <div id="bar" style="width: 0%; height: 100%; background: var(--accent); border-radius: 4px; transition: width 1.4s ease-out;"></div>
+    </div>
+    <div style="font-size: 28px; font-weight: 700; letter-spacing: 1px; margin-bottom: 4px;">DevSereno</div>
+    <div style="font-size: 12px; opacity: .65; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 10px;">Desenvolvedor</div>
+    <div style="font-size: 12px; opacity: .55;">Carregando...</div>
+  </div>
+
+  <!-- Escolha de modo -->
+  <div id="choice" style="display: none;">
+    <img id="choice-logo" src="logos/apura-dark.jpg" alt="Apura">
+    <h2 style="margin: 10px 0 6px; font-size: 1.8rem;">Como você vai ver o Apura?</h2>
+    <p style="color: var(--muted); max-width: 420px;">Escolha o modo que melhor se adapta à sua tela. Você pode mudar depois.</p>
+    <div class="choice-btns">
+      <button id="btn-tv" type="button">📺 TV</button>
+      <button id="btn-phone" type="button">📱 Celular</button>
+    </div>
+    <button id="theme-btn-choice" class="theme-toggle" style="margin-top: 30px;" type="button">☀️ / 🌙</button>
+  </div>
+
+  <div id="app" style="display: none;">
+    <header>
+      <img class="logo" id="header-logo" src="logos/apura-dark.jpg" alt="Apura">
+      <h1>Apura · Espírito Santo 2026 · 2º turno</h1>
+      <div class="controls">
+        <button id="now" type="button">Atualizar</button>
+        <button id="limpar" type="button">Limpar votos</button>
+        <button id="change-mode" type="button">Trocar modo</button>
+        <button id="theme-btn" class="theme-toggle" type="button">🌙</button>
+        <span class="pill" id="clock">aguardando TSE…</span>
+        <span class="pill" id="next">próxima em 5:00</span>
+      </div>
+    </header>
+
+    <main>
+      <h2>Mais votados</h2>
+      <p class="hint">Ranking atualizado. “Eleito” só aparece quando o TSE confirma.</p>
+      <div class="tops-grid" id="tops"></div>
+
+      <h2>Como eu votei (colinha)</h2>
+      <div class="grid" id="cards"></div>
+
+      <h2>Urnas / seções ainda por totalizar</h2>
+      <div class="kpis" id="kpis"></div>
+      <div class="box" style="margin-top: 14px;">
+        <div class="cargo">Espírito Santo · municípios com seção fora da soma</div>
+        <div style="overflow: auto; max-height: 320px; margin-top: 8px;">
+          <table>
+            <thead><tr><th>Município</th><th>Faltam</th><th>Totalizadas</th><th>Total</th><th>%</th></tr></thead>
+            <tbody id="muns"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>Lista · deputados</h2>
+      <div class="grid" id="listas"></div>
+
+      <h2>Escolher candidatos</h2>
+      <div class="grid" id="picker"></div>
+    </main>
+
+    <footer>
+      Fonte: JSON público do TSE (resultados.tse.jus.br). Parcial até a totalização.<br>
+      Desenvolvido por DevSereno · Apura
+    </footer>
+  </div>
+
+  <script>
+    const INTERVALO = 5 * 60 * 1000;
+    const BASE = "https://resultados.tse.jus.br/oficial/ele2026";
+    const STORE = "colinha-es-2026";
+    const PADRAO = {
+      presidente: ["14"],
+      governador: ["14"],
+      senador: ["400", "556"],
+      deputado_federal: ["4000"],
+      deputado_estadual: ["14014"]
+    };
+    const CARGOS = [
+      { id: "presidente", nome: "Presidente · 2º turno", uf: "br", ele: "6258", cd: "0001", regra: "major" },
+      { id: "governador", nome: "Governador · ES · 2º turno", uf: "es", ele: "6260", cd: "0003", regra: "major" },
+      { id: "senador", nome: "Senador · ES", uf: "es", ele: "6259", cd: "0005", regra: "senado" },
+      { id: "deputado_federal", nome: "Dep. federal · ES", uf: "es", ele: "6259", cd: "0006", regra: "prop", vagas: 10 },
+      { id: "deputado_estadual", nome: "Dep. estadual · ES", uf: "es", ele: "6259", cd: "0007", regra: "prop", vagas: 30 }
+    ];
+
+    const el = (id) => document.getElementById(id);
+    let falta = INTERVALO;
+    let cache = {};
+    let modo = localStorage.getItem("apura-modo") || "";
+    let tema = localStorage.getItem("apura-tema") || "dark";
+
+    function copia(o) {
+      var out = {};
+      for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) out[k] = o[k].slice();
+      return out;
+    }
+    function loadSel() {
+      try {
+        var raw = localStorage.getItem(STORE);
+        if (!raw) return copia(PADRAO);
+        var parsed = JSON.parse(raw);
+        var base = copia(PADRAO);
+        for (var k in parsed) if (Object.prototype.hasOwnProperty.call(parsed, k)) base[k] = parsed[k];
+        return base;
+      } catch (e) { return copia(PADRAO); }
+    }
+    function saveSel(sel) { localStorage.setItem(STORE, JSON.stringify(sel)); }
+    let sel = loadSel();
+
+    function applyTheme(t) {
+      tema = t;
+      document.body.setAttribute("data-theme", t);
+      localStorage.setItem("apura-tema", t);
+      const logoSrc = t === "dark" ? "logos/apura-dark.jpg" : "logos/apura-light.jpg";
+      document.querySelectorAll("#splash-logo, #choice-logo, #header-logo").forEach(img => {
+        if (img) img.src = logoSrc;
+      });
+      const btn = el("theme-btn");
+      if (btn) btn.textContent = t === "dark" ? "🌙" : "☀️";
+    }
+
+    function applyModo(m) {
+      modo = m;
+      document.body.classList.remove("modo-tv", "modo-phone");
+      document.body.classList.add(m === "tv" ? "modo-tv" : "modo-phone");
+      localStorage.setItem("apura-modo", m);
+      el("choice").style.display = "none";
+      el("app").style.display = "block";
+    }
+
+    // Splash
+    setTimeout(() => {
+      const bar = el("bar");
+      if (bar) bar.style.width = "100%";
+    }, 50);
+    setTimeout(() => {
+      el("splash").style.opacity = "0";
+      setTimeout(() => {
+        el("splash").style.display = "none";
+        if (modo) {
+          applyModo(modo);
+        } else {
+          el("choice").style.display = "flex";
+        }
+      }, 400);
+    }, 1500);
+
+    el("btn-tv").onclick = () => applyModo("tv");
+    el("btn-phone").onclick = () => applyModo("phone");
+    el("change-mode").onclick = () => {
+      el("app").style.display = "none";
+      el("choice").style.display = "flex";
+    };
+    el("theme-btn").onclick = () => applyTheme(tema === "dark" ? "light" : "dark");
+    el("theme-btn-choice").onclick = () => applyTheme(tema === "dark" ? "light" : "dark");
+
+    applyTheme(tema);
+
+    function urlDe(c) {
+      const ele = String(c.ele).padStart(6, "0");
+      return `${BASE}/${c.ele}/dados/${c.uf}/${c.uf}-c${c.cd}-e${ele}-u.json?t=${Date.now()}`;
+    }
+    async function getJson(url) {
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }
+    function n(v) { return Number(String(v ?? 0).replace(/\./g, "").replace(",", ".")) || 0; }
+    function br(v) { return Number(v || 0).toLocaleString("pt-BR"); }
+
+    function candidatos(json) {
+      const lista = [];
+      for (const cargo of json.carg || []) {
+        for (const agr of cargo.agr || []) {
+          for (const par of agr.par || []) {
+            for (const c of par.cand || []) {
+              lista.push({
+                numero: String(c.n),
+                sq: c.sqcand || "",
+                nome: c.nmu || c.nm,
+                partido: par.sg || "",
+                votos: Number(c.vap || 0),
+                pct: c.pvap || "0,00",
+                eleito: c.e === "s"
+              });
+            }
+          }
+        }
+      }
+      lista.sort((a, b) => b.votos - a.votos);
+      lista.forEach((c, i) => { c.pos = i + 1; });
+      return lista;
+    }
+    function statusDe(regra, eu, vagas) {
+      if (!eu) return { cls: "wait", txt: "sem voto na parcial" };
+      if (eu.eleito) return { cls: "win", txt: "eleito" };
+      if (regra === "senado") return eu.pos <= 2 ? { cls: "win", txt: "na vaga · " + eu.pos + "º" } : { cls: "lose", txt: "fora das 2 vagas · " + eu.pos + "º" };
+      if (regra === "prop") {
+        const faixa = vagas || 0;
+        return eu.pos <= faixa
+          ? { cls: "mid", txt: "na faixa · " + eu.pos + "º de " + faixa }
+          : { cls: "lose", txt: "fora · " + eu.pos + "º de " + faixa };
+      }
+      const pct = Number(String(eu.pct).replace(",", "."));
+      if (eu.pos === 1 && pct > 50) return { cls: "win", txt: "na frente e acima de 50%" };
+      if (eu.pos === 1) return { cls: "mid", txt: "na frente, abaixo de 50%" };
+      if (eu.pos === 2) return { cls: "mid", txt: "2º · no 2º turno por enquanto" };
+      return { cls: "lose", txt: `perdendo · ${eu.pos}º` };
+    }
+
+    function kpi(titulo, valor, extra, warn) {
+      return `<div class="kpi ${warn ? "warn" : ""}"><span>${titulo}</span><strong>${valor}</strong><span>${extra || ""}</span></div>`;
+    }
+
+    function desenhaUrnas(brJson, esJson, muns) {
+      const bs = brJson.s || {}, es = esJson.s || {};
+      el("kpis").innerHTML = [
+        kpi("Brasil · seções", br(bs.ts), "total de urnas/seções"),
+        kpi("Brasil · já na soma", br(bs.st), (bs.pst || "0") + "% totalizadas"),
+        kpi("Brasil · ainda por totalizar", br(bs.snt), "boletim ainda não entrou", true),
+        kpi("Brasil · não instaladas", br(bs.sni), "seção não abriu"),
+        kpi("ES · seções", br(es.ts), "total no estado"),
+        kpi("ES · já na soma", br(es.st), (es.pst || "0") + "% totalizadas"),
+        kpi("ES · ainda por totalizar", br(es.snt), "a conferir / entrar na soma", true),
+        kpi("ES · municípios zerados", br(muns.filter(m => m.st === 0).length), "nenhuma urna na soma")
+      ].join("");
+      const corpo = muns.filter(m => m.snt > 0).sort((a, b) => b.snt - a.snt).slice(0, 40);
+      el("muns").innerHTML = corpo.map(m => `<tr><td>${m.nome}</td><td>${br(m.snt)}</td><td>${br(m.st)}</td><td>${br(m.ts)}</td><td>${m.pst}%</td></tr>`).join("")
+        || `<tr><td colspan="5">Nenhuma seção pendente no ES nesta leitura.</td></tr>`;
+    }
+
+    function desenhaTops() {
+      const box = el("tops");
+      box.innerHTML = "";
+      for (const cargo of CARGOS) {
+        const json = cache[cargo.id];
+        if (!json) continue;
+        const todos = candidatos(json);
+        const faixa = cargo.vagas || (cargo.regra === "senado" ? 2 : 0);
+        const eleitos = todos.filter(c => c.eleito).length;
+        const lista = todos.slice(0, 8);
+        const wrap = document.createElement("article");
+        wrap.className = "rank-card";
+        const cabeca = faixa
+          ? `${cargo.nome} · ${faixa} vagas · ${eleitos} eleito(s) · ${json.s && json.s.pst || "—"}%`
+          : `${cargo.nome} · ${json.s && json.s.pst || "—"}%`;
+        const linhas = lista.map(c => {
+          const foto = c.sq ? "https://resultados.tse.jus.br/oficial/ele2026/" + cargo.ele + "/fotos/" + cargo.uf + "/" + c.sq + ".jpeg" : "";
+          const naFaixa = faixa && c.pos <= faixa;
+          const selo = c.eleito ? "eleito" : (naFaixa ? "na vaga" : c.pos + "º");
+          const cls = c.eleito ? "win" : (naFaixa ? "mid" : "wait");
+          const posCls = c.pos <= 3 ? "top3" : "";
+          const pctNum = Number(String(c.pct).replace(",", "."));
+          return `<div class="rank-item">
+            <div class="rank-pos ${posCls}">${c.pos}</div>
+            ${foto ? `<img class="foto" alt="" src="${foto}">` : ""}
+            <div style="min-width:0;flex:1">
+              <div class="nome">${c.nome}</div>
+              <div class="meta">${c.numero} · ${c.partido}</div>
+              <div style="font-weight:600">${br(c.votos)} votos · ${c.pct}%</div>
+              <div class="track"><div class="fill" style="width:${Math.min(100, pctNum)}%"></div></div>
+            </div>
+            <div class="status ${cls}">${selo}</div>
+          </div>`;
+        }).join("");
+        wrap.innerHTML = `<div class="cargo">${cabeca}</div>${linhas}`;
+        box.appendChild(wrap);
+      }
+    }
+
+    function desenhaCards() {
+      const box = el("cards");
+      box.innerHTML = "";
+      let algum = false;
+      for (const cargo of CARGOS) {
+        const json = cache[cargo.id];
+        if (!json) continue;
+        const todos = candidatos(json);
+        const nums = sel[cargo.id] || [];
+        for (const num of nums) {
+          algum = true;
+          const eu = todos.find(c => c.numero === num);
+          const st = statusDe(cargo.regra, eu, cargo.vagas);
+          const lider = todos[0];
+          const largura = eu ? Math.min(100, Number(String(eu.pct).replace(",", "."))) : 0;
+          const foto = eu && eu.sq ? "https://resultados.tse.jus.br/oficial/ele2026/" + cargo.ele + "/fotos/" + cargo.uf + "/" + eu.sq + ".jpeg" : "";
+          const art = document.createElement("article");
+          art.innerHTML = `
+            <div class="top">
+              <div class="pessoa">
+                ${foto ? `<img class="foto" alt="" src="${foto}">` : ""}
+                <div>
+                  <div class="cargo">${cargo.nome} · nº ${num}</div>
+                  <div class="nome">${eu ? eu.nome : "número não encontrado"}</div>
+                  <div class="meta">${eu ? eu.partido : ""} · urnas ${(json.s && json.s.pst) || "—"}%</div>
+                </div>
+              </div>
+              <div class="status ${st.cls}">${st.txt}</div>
+            </div>
+            <div class="nums">
+              <div><strong>${eu ? br(eu.votos) : "—"}</strong><span>votos</span></div>
+              <div><strong>${eu ? eu.pct + "%" : "—"}</strong><span>dos válidos</span></div>
+              <div><strong>${eu ? eu.pos + "º" : "—"}</strong><span>colocação</span></div>
+            </div>
+            <div class="track"><div class="fill" style="width:${largura}%"></div></div>
+            <p class="hint">${lider ? `Líder: ${lider.nome} (${lider.numero}) · ${br(lider.votos)} · ${lider.pct}%` : ""}</p>`;
+          box.appendChild(art);
+        }
+      }
+      if (!algum) box.innerHTML = `<article><p>Nenhum candidato marcado. Escolha abaixo.</p></article>`;
+    }
+
+    function desenhaListas() {
+      const box = el("listas");
+      box.innerHTML = "";
+      CARGOS.filter(c => c.vagas).forEach(cargo => {
+        const json = cache[cargo.id];
+        if (!json) return;
+        const todos = candidatos(json);
+        const eleitosLista = todos.filter(c => c.eleito);
+        const fonte = eleitosLista.length ? eleitosLista : todos.slice(0, cargo.vagas + 5);
+        const wrap = document.createElement("div");
+        wrap.className = "box";
+        wrap.innerHTML = `<div class="cargo">${cargo.nome}</div><strong>${fonte.filter(c=>c.eleito).length} eleito(s) · ${cargo.vagas} vagas</strong>`;
+        const lista = document.createElement("div");
+        lista.style.maxHeight = "360px";
+        lista.style.overflow = "auto";
+        fonte.slice(0, 40).forEach(c => {
+          const foto = c.sq ? "https://resultados.tse.jus.br/oficial/ele2026/" + cargo.ele + "/fotos/" + cargo.uf + "/" + c.sq + ".jpeg" : "";
+          const row = document.createElement("div");
+          row.className = "pessoa";
+          row.style.margin = "8px 0";
+          row.innerHTML = `${foto ? `<img class="foto" alt="" src="${foto}">` : ""}<div style="min-width:0;flex:1"><div class="nome">${c.pos}º ${c.nome}</div><div class="meta">${c.numero} · ${c.partido}<br>${br(c.votos)} votos · ${c.pct}%</div></div><div class="status ${c.eleito?"win":"wait"}">${c.eleito?"eleito":c.pos+"º"}</div>`;
+          lista.appendChild(row);
+        });
+        wrap.appendChild(lista);
+        box.appendChild(wrap);
+      });
+    }
+
+    function desenhaPicker() {
+      const box = el("picker");
+      box.innerHTML = "";
+      for (const cargo of CARGOS) {
+        const json = cache[cargo.id];
+        const todos = json ? candidatos(json) : [];
+        const wrap = document.createElement("div");
+        wrap.className = "box";
+        const marcados = (sel[cargo.id] || []).length;
+        wrap.innerHTML = `<div class="cargo">${cargo.nome}</div><strong>${marcados} marcado(s)</strong>`;
+        const busca = document.createElement("input");
+        busca.type = "search";
+        busca.placeholder = "filtrar nome ou número";
+        busca.style.width = "100%";
+        busca.style.marginTop = "8px";
+        const lista = document.createElement("div");
+        lista.style.maxHeight = "220px";
+        lista.style.overflow = "auto";
+        function render(q) {
+          const qq = q.trim().toLowerCase();
+          const vis = todos.filter(c => !qq || c.nome.toLowerCase().includes(qq) || c.numero.includes(qq)).slice(0, 60);
+          lista.innerHTML = "";
+          for (const c of vis) {
+            const lab = document.createElement("label");
+            lab.style.display = "flex";
+            lab.style.gap = "8px";
+            lab.style.padding = "6px 0";
+            lab.style.alignItems = "center";
+            const ck = document.createElement("input");
+            ck.type = "checkbox";
+            ck.checked = (sel[cargo.id] || []).includes(c.numero);
+            ck.onchange = () => {
+              const set = new Set(sel[cargo.id] || []);
+              ck.checked ? set.add(c.numero) : set.delete(c.numero);
+              sel[cargo.id] = [...set];
+              saveSel(sel);
+              desenhaCards();
+              wrap.querySelector("strong").textContent = `${sel[cargo.id].length} marcado(s)`;
+            };
+            lab.append(ck, document.createTextNode(` ${c.numero} ${c.nome} (${c.partido})`));
+            lista.appendChild(lab);
+          }
+          if (!vis.length) lista.innerHTML = `<p class="hint">Sem candidato nesse filtro.</p>`;
+        }
+        busca.oninput = () => render(busca.value);
+        wrap.append(busca, lista);
+        box.appendChild(wrap);
+        render("");
+      }
+    }
+
+    let lastHash = "";
+
+    function hashData(data) {
+      try {
+        // Hash key fields that change with results
+        const key = {
+          p: data.presidente ? { dt: data.presidente.dt, ht: data.presidente.ht, pst: data.presidente.s?.pst, votes: (data.presidente.carg?.[0]?.agr?.[0]?.par || []).map(p => p.cand?.map(c => c.vap).join()) } : null,
+          g: data.governador ? { dt: data.governador.dt, ht: data.governador.ht, pst: data.governador.s?.pst, votes: (data.governador.carg?.[0]?.agr?.[0]?.par || []).map(p => p.cand?.map(c => c.vap).join()) } : null,
+          s: data.senador?.s?.pst,
+          df: data.deputado_federal?.s?.pst,
+          de: data.deputado_estadual?.s?.pst
+        };
+        return JSON.stringify(key);
+      } catch (e) { return ""; }
+    }
+
+    async function carregar(force = false) {
+      try {
+        const pedidos = await Promise.allSettled([
+          getJson(urlDe(CARGOS[0])),
+          getJson(urlDe(CARGOS[1])),
+          getJson(urlDe(CARGOS[2])),
+          getJson(urlDe(CARGOS[3])),
+          getJson(urlDe(CARGOS[4])),
+          getJson(`${BASE}/6259/dados/es/es-e006259-ab.json?t=${Date.now()}`),
+          getJson(`${BASE}/6259/config/mun-e006259-cm.json`)
+        ]);
+        const pegar = i => pedidos[i].status === "fulfilled" ? pedidos[i].value : null;
+        const brJson = pegar(0), esGov = pegar(1), esSen = pegar(2), esDf = pegar(3), esDe = pegar(4);
+        const ab = pegar(5) || { abr: [] };
+        const mun = pegar(6) || { abr: [] };
+        if (!brJson && !esGov) throw new Error("TSE não devolveu os arquivos agora");
+
+        const newCache = { presidente: brJson, governador: esGov, senador: esSen, deputado_federal: esDf, deputado_estadual: esDe };
+        const newHash = hashData(newCache);
+
+        // Só atualiza a tela se os dados mudaram ou se foi forçado (botão)
+        if (!force && newHash === lastHash && lastHash !== "") {
+          el("clock").textContent = `TSE ${brJson?.dt || ""} ${brJson?.ht || ""} · sem mudanças`.trim();
+          falta = INTERVALO;
+          return;
+        }
+
+        lastHash = newHash;
+        cache = newCache;
+
+        const nomes = {};
+        for (const uf of mun.abr || []) {
+          if (uf.cd !== "es") continue;
+          for (const m of uf.mu || []) nomes[m.cd] = m.nm;
+        }
+        const muns = (ab.abr || []).map(a => ({
+          nome: nomes[a.cdabr] || a.cdabr,
+          ts: n(a.s && a.s.ts), st: n(a.s && a.s.st), snt: n(a.s && a.s.snt), pst: (a.s && a.s.pst) || "0,00"
+        })).filter(m => m.snt > 0).sort((a,b) => b.snt - a.snt);
+        desenhaUrnas(brJson, esGov, muns);
+        desenhaTops();
+        desenhaListas();
+        desenhaCards();
+        desenhaPicker();
+        el("clock").textContent = `TSE ${brJson?.dt || ""} ${brJson?.ht || ""}`.trim();
+        falta = INTERVALO;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    el("now").onclick = () => carregar(true);
+    el("limpar").onclick = () => {
+      sel = { presidente: [], governador: [], senador: [], deputado_federal: [], deputado_estadual: [] };
+      saveSel(sel);
+      desenhaCards();
+      desenhaPicker();
+    };
+    setInterval(() => {
+      falta -= 1000;
+      if (falta < 0) falta = 0;
+      const s = Math.ceil(falta / 1000);
+      el("next").textContent = `próxima em ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    }, 1000);
+    setInterval(carregar, INTERVALO);
+    carregar();
+  </script>
+</body>
+</html>
